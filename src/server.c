@@ -1388,7 +1388,7 @@ int parse_server(const char *file, int linenum, char **args, struct proxy *curpr
 				newsrv->check.downinter = val;
 				cur_arg += 2;
 			}
-			else if (!defsrv && !strcmp(args[cur_arg], "addr")) {
+			else if (!defsrv && (!strcmp(args[cur_arg], "addr") || !strcmp(args[cur_arg], "agent-addr"))) {
 				struct sockaddr_storage *sk;
 				int port1, port2;
 				struct protocol *proto;
@@ -1416,7 +1416,11 @@ int parse_server(const char *file, int linenum, char **args, struct proxy *curpr
 					goto out;
 				}
 
-				newsrv->check.addr = newsrv->agent.addr = *sk;
+				if (!strcmp(args[cur_arg], "agent-addr")) {
+					newsrv->agent.addr = *sk;
+				} else {
+					newsrv->check.addr = newsrv->agent.addr = *sk;
+				}
 				newsrv->flags |= SRV_F_CHECKADDR;
 				newsrv->flags |= SRV_F_AGENTADDR;
 				cur_arg += 2;
