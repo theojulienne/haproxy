@@ -1638,6 +1638,25 @@ smp_fetch_srv_is_up(const struct arg *args, struct sample *smp, const char *kw, 
 	return 1;
 }
 
+/* Returns the current weight of the given server, or 0 if the server is inactive.
+ * Accepts exactly 1 argument. Argument is a server, other types will lead to
+ * undefined behaviour.
+ */
+static int
+smp_fetch_srv_weight(const struct arg *args, struct sample *smp, const char *kw, void *private)
+{
+	struct server *srv = args->data.srv;
+
+	smp->flags = SMP_F_VOL_TEST;
+	smp->data.type = SMP_T_SINT;
+	if (!(srv->admin & SRV_ADMF_MAINT) &&
+	    (!(srv->check.state & CHK_ST_CONFIGURED) || (srv->state != SRV_ST_STOPPED)))
+		smp->data.u.sint = srv->uweight;
+	else
+		smp->data.u.sint = 0;
+	return 1;
+}
+
 /* set temp integer to the number of enabled servers on the proxy.
  * Accepts exactly 1 argument. Argument is a backend, other types will lead to
  * undefined behaviour.
@@ -1810,6 +1829,7 @@ static struct sample_fetch_kw_list smp_kws = {ILH, {
 	{ "srv_conn",      smp_fetch_srv_conn,       ARG1(1,SRV), NULL, SMP_T_SINT, SMP_USE_INTRN, },
 	{ "srv_id",        smp_fetch_srv_id,         0,           NULL, SMP_T_SINT, SMP_USE_SERVR, },
 	{ "srv_is_up",     smp_fetch_srv_is_up,      ARG1(1,SRV), NULL, SMP_T_BOOL, SMP_USE_INTRN, },
+	{ "srv_weight",    smp_fetch_srv_weight,     ARG1(1,SRV), NULL, SMP_T_SINT, SMP_USE_INTRN, },
 	{ "srv_sess_rate", smp_fetch_srv_sess_rate,  ARG1(1,SRV), NULL, SMP_T_SINT, SMP_USE_INTRN, },
 	{ /* END */ },
 }};
