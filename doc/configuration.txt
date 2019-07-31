@@ -14349,6 +14349,22 @@ srv_sess_rate([<backend>/]<server>) : integer
         acl srv2_full srv_sess_rate(be1/srv2) gt 50
         use_backend be2 if srv1_full or srv2_full
 
+srv_uweight([<backend>/]<server>) : integer
+  Returns an integer value corresponding to the current weight of the server.
+  This value is relative to the initial weight of the server multiplied by the 
+  current percentage set through agent-check.
+
+  Example :
+        # Use a dummy backend to allow an agent-check to control weight in ACLs
+        acl example_feature_enabled srv_is_up(feature_flags/example_feature)
+        acl example_feature_ramp srv_uweight(feature_flags/example_feature),rand_percent -m bool
+        use_backend new_thing if example_feature_enabled example_feature_ramp
+
+        # Have a list of feature flags
+        backend feature_flags
+          server example_feature 127.0.0.1:8080 weight 100 agent-check agent-addr 127.0.0.1 agent-port 3333 agent-send "example_feature" disabled
+
+
 stopping : boolean
   Returns TRUE if the process calling the function is currently stopping. This
   can be useful for logging, or for relaxing certain checks or helping close

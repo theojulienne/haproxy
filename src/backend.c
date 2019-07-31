@@ -2095,6 +2095,18 @@ smp_fetch_srv_id(const struct arg *args, struct sample *smp, const char *kw, voi
 	return 1;
 }
 
+/* set temp integer to the uweight of the server */
+static int
+smp_fetch_srv_uweight(const struct arg *args, struct sample *smp, const char *kw, void *private)
+{
+	struct server *srv = args->data.srv;
+
+	smp->data.type = SMP_T_SINT;
+	smp->data.u.sint = srv->uweight;
+
+	return 1;
+}
+
 /* set temp integer to the number of connections per second reaching the backend.
  * Accepts exactly 1 argument. Argument is a backend, other types will lead to
  * undefined behaviour.
@@ -2306,6 +2318,7 @@ static struct sample_fetch_kw_list smp_kws = {ILH, {
 	{ "srv_is_up",     smp_fetch_srv_is_up,      ARG1(1,SRV), NULL, SMP_T_BOOL, SMP_USE_INTRN, },
 	{ "srv_queue",     smp_fetch_srv_queue,      ARG1(1,SRV), NULL, SMP_T_SINT, SMP_USE_INTRN, },
 	{ "srv_sess_rate", smp_fetch_srv_sess_rate,  ARG1(1,SRV), NULL, SMP_T_SINT, SMP_USE_INTRN, },
+	{ "srv_uweight",   smp_fetch_srv_uweight,    ARG1(1,SRV), NULL, SMP_T_SINT, SMP_USE_INTRN, },
 	{ /* END */ },
 }};
 
