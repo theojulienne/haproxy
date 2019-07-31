@@ -2227,6 +2227,17 @@ static inline int sample_conv_var2smp(const struct arg *arg, struct sample *smp)
 	}
 }
 
+/* Takes the input as an integer probability between 0 and 100, and
+ * returns true that percentage of the time. 
+ */
+static int sample_conv_rand_percent(const struct arg *arg_p, struct sample *smp, void *private)
+{
+	unsigned r = ((random() * 100) / ((u64)RAND_MAX+1));
+	smp->data.u.sint = (r < smp->data.u.sint);
+	smp->data.type = SMP_T_BOOL;
+	return 1;
+}
+
 /* Takes a SINT on input, applies a binary twos complement and returns the SINT
  * result.
  */
@@ -2804,6 +2815,7 @@ static struct sample_conv_kw_list sample_conv_kws = {ILH, {
 	{ "word",   sample_conv_word,      ARG2(2,SINT,STR), sample_conv_field_check, SMP_T_STR,  SMP_T_STR },
 	{ "regsub", sample_conv_regsub,    ARG3(2,REG,STR,STR), sample_conv_regsub_check, SMP_T_STR, SMP_T_STR },
 	{ "sha1",   sample_conv_sha1,      0,            NULL, SMP_T_BIN,  SMP_T_BIN  },
+	{ "rand_percent",sample_conv_rand_percent, 0,    NULL, SMP_T_SINT, SMP_T_BOOL },
 
 	{ "and",    sample_conv_binary_and, ARG1(1,STR), check_operator, SMP_T_SINT, SMP_T_SINT  },
 	{ "or",     sample_conv_binary_or,  ARG1(1,STR), check_operator, SMP_T_SINT, SMP_T_SINT  },
