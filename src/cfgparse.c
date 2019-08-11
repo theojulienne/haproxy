@@ -1870,6 +1870,25 @@ int cfg_parse_global(const char *file, int linenum, char **args, int kwm)
 				env++;
 		}
 	}
+	else if (!strcmp(args[0], "proctitle-format")) {
+		char *d;
+
+		if (!*args[1]) {
+			ha_alert("parsing [%s:%d]: '%s' expects a string argument.\n",
+				 file, linenum, args[0]);
+			err_code |= ERR_ALERT | ERR_FATAL;
+			goto out;
+		}
+		
+		if (*(args[2])) {
+			ha_alert("parsing [%s:%d] : %s expects only one argument, don't forget to escape spaces!\n", file, linenum, args[0]);
+			err_code |= ERR_ALERT | ERR_FATAL;
+			goto out;
+		}
+
+		d = args[1];
+		setproctitle("%s", d);
+	}
 	else {
 		struct cfg_kw_list *kwl;
 		int index;

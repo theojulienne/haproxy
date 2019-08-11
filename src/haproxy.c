@@ -117,6 +117,8 @@
 #include <proto/ssl_sock.h>
 #endif
 
+#include "setproctitle.h"
+
 /* list of config files */
 static struct list cfg_cfgfiles = LIST_HEAD_INIT(cfg_cfgfiles);
 int  pid;			/* current process id */
@@ -2422,6 +2424,8 @@ int main(int argc, char **argv)
 	struct rlimit limit;
 	char errmsg[100];
 	int pidfd = -1;
+
+	init_setproctitle(argc, &argv);
 
 	init(argc, argv);
 	signal_register_fct(SIGQUIT, dump, SIGQUIT);
