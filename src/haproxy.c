@@ -127,6 +127,8 @@
 #include <proto/vars.h>
 #include <proto/ssl_sock.h>
 
+#include "setproctitle.h"
+
 /* array of init calls for older platforms */
 DECLARE_INIT_STAGES;
 
@@ -2646,6 +2648,8 @@ int main(int argc, char **argv)
 	struct rlimit limit;
 	char errmsg[100];
 	int pidfd = -1;
+
+	init_setproctitle(argc, &argv);
 
 	setvbuf(stdout, NULL, _IONBF, 0);
 

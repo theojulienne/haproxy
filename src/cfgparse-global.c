@@ -14,6 +14,8 @@
 #include <common/cfgparse.h>
 #include <proto/compression.h>
 
+#include "setproctitle.h"
+
 /*
  * parse a line in a <global> section. Returns the error code, 0 if OK, or
  * any combination of :
@@ -1171,6 +1173,25 @@ int cfg_parse_global(const char *file, int linenum, char **args, int kwm)
 			else
 				env++;
 		}
+	}
+	else if (!strcmp(args[0], "proctitle-format")) {
+		char *d;
+
+		if (!*args[1]) {
+			ha_alert("parsing [%s:%d]: '%s' expects a string argument.\n",
+				 file, linenum, args[0]);
+			err_code |= ERR_ALERT | ERR_FATAL;
+			goto out;
+		}
+		
+		if (*(args[2])) {
+			ha_alert("parsing [%s:%d] : %s expects only one argument, don't forget to escape spaces!\n", file, linenum, args[0]);
+			err_code |= ERR_ALERT | ERR_FATAL;
+			goto out;
+		}
+
+		d = args[1];
+		setproctitle("%s", d);
 	}
 	else {
 		struct cfg_kw_list *kwl;

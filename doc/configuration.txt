@@ -595,6 +595,7 @@ The following keywords are supported in the "global" section :
    - node
    - pidfile
    - presetenv
+   - proctitle-format
    - resetenv
    - uid
    - ulimit-n
@@ -1076,6 +1077,11 @@ presetenv <name> <value>
   is NOT overwritten. The changes immediately take effect so that the next line
   in the configuration file sees the new value. See also "setenv", "resetenv",
   and "unsetenv".
+
+proctitle-format <process title>
+  Sets the current process title (visible in "ps" and similar tools) to the
+  specified string. This is set early at startup and allows the title to
+  show additional details about the current configuration (git SHA, etc).
 
 resetenv [<name> ...]
   Removes all environment variables except the ones specified in argument. It
