@@ -932,10 +932,12 @@ presetenv <name> <value>
   in the configuration file sees the new value. See also "setenv", "resetenv",
   and "unsetenv".
 
-proctitle-format <process title>
-  Sets the current process title (visible in "ps" and similar tools) to the
-  specified string. This is set early at startup and allows the title to
-  show additional details about the current configuration (git SHA, etc).
+proctitle-format <process title format>
+  Sets the current process title (visible in "ps" and similar tools) to a string
+  built from the specified format. Only non-reqeuest/session log format 
+  specifiers are supported here. The proctitle is updated approximately every
+  second and can be used to show additional details about the current 
+  configuration (git SHA, etc) as well as global like total active connections.
 
 resetenv [<name> ...]
   Removes all environment variables except the ones specified in argument. It

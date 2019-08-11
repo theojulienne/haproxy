@@ -1871,7 +1871,8 @@ int cfg_parse_global(const char *file, int linenum, char **args, int kwm)
 		}
 	}
 	else if (!strcmp(args[0], "proctitle-format")) {
-		char *d;
+		const char *d;
+		char *err = NULL;
 
 		if (!*args[1]) {
 			ha_alert("parsing [%s:%d]: '%s' expects a string argument.\n",
@@ -1887,7 +1888,15 @@ int cfg_parse_global(const char *file, int linenum, char **args, int kwm)
 		}
 
 		d = args[1];
-		setproctitle("%s", d);
+
+		if (!parse_logformat_string(d, &defproxy, &global.proctitle_format, LOG_OPT_MANDATORY,
+									0 /* FIXME: no samples are valid */, &err)) {
+			ha_alert("Parsing [%s:%d]: failed to parse proctitle-format : %s.\n",
+					file, linenum, err);
+			free(err);
+			err_code |= ERR_ALERT | ERR_FATAL;
+			goto out;
+		}
 	}
 	else {
 		struct cfg_kw_list *kwl;

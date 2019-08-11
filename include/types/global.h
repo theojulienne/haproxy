@@ -170,6 +170,8 @@ struct global {
 #endif
 	struct proxy *stats_fe;     /* the frontend holding the stats settings */
 	struct vars   vars;         /* list of variables for the process scope. */
+	struct list proctitle_format;
+	struct task *proctitle_task;
 };
 
 extern struct global global;

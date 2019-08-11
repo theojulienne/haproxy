@@ -1212,6 +1212,44 @@ static char **copy_argv(int argc, char **argv)
 	return newargv;
 }
 
+/* temporary location for setproctitle update loop */
+#define PROCTITLE_UPDATE_INTERVAL_MS 1000
+
+static struct task *update_proctitle(struct task *t)
+{
+	char proctitle[1024];
+	int size;
+
+	size = build_logline(NULL, proctitle, sizeof(proctitle), &global.proctitle_format);
+
+	setproctitle("%s", proctitle);
+
+	/* re-schedule this task every interval defined above */
+	t->expire = tick_add(now_ms, MS_TO_TICKS(PROCTITLE_UPDATE_INTERVAL_MS));
+	return t;
+}
+
+static int start_proctitle_task()
+{
+	struct task *t;
+
+	/* task for the proctitle update */
+	if ((t = task_new(MAX_THREADS_MASK)) == NULL) {
+		ha_alert("Starting proctitle update loop: out of memory.\n");
+		return 0;
+	}
+
+	global.proctitle_task = t;
+	t->process = update_proctitle;
+	t->context = NULL;
+
+	/* initiate this task every interval defined above */
+	t->expire = tick_add(now_ms, MS_TO_TICKS(PROCTITLE_UPDATE_INTERVAL_MS));
+	task_queue(t);
+
+	return 1;
+}
+
 /*
  * This function initializes all the necessary variables. It only returns
  * if everything is OK. If something fails, it exits.
@@ -1229,6 +1267,9 @@ static void init(int argc, char **argv)
 	struct proxy *px;
 	struct post_check_fct *pcf;
 
+	LIST_INIT(&global.proctitle_format);
+	global.proctitle_task = NULL;
+	
 	global.mode = MODE_STARTING;
 	next_argv = copy_argv(argc, argv);
 
@@ -1581,6 +1622,14 @@ static void init(int argc, char **argv)
 	/* very simple initialization, users will queue the task if needed */
 	global_listener_queue_task->context = NULL; /* not even a context! */
 	global_listener_queue_task->process = manage_global_listener_queue;
+
+	/* start up a task to update the proctitle, if needed */
+	if (!LIST_ISEMPTY(&global.proctitle_format)) {
+		if (!start_proctitle_task()) {
+			ha_alert("Error while initialising proctitle task\n");
+			exit(1);
+		}
+	}
 
 	/* now we know the buffer size, we can initialize the channels and buffers */
 	init_buffer();
@@ -1947,6 +1996,11 @@ void deinit(void)
 	struct build_opts_str *bol, *bolb;
 	struct post_deinit_fct *pdf;
 	int i;
+
+	if (global.proctitle_task) {
+		task_free(global.proctitle_task);
+		global.proctitle_task = NULL;
+	}
 
 	deinit_signals();
 	while (p) {

@@ -1388,10 +1388,10 @@ void deinit_log_buffers()
  */
 int build_logline(struct stream *s, char *dst, size_t maxsize, struct list *list_format)
 {
-	struct session *sess = strm_sess(s);
-	struct proxy *fe = sess->fe;
-	struct proxy *be = s->be;
-	struct http_txn *txn = s->txn;
+	struct session *sess = (s ? strm_sess(s) : NULL);
+	struct proxy *fe = (sess ? sess->fe : NULL);
+	struct proxy *be = (s ? s->be : NULL);
+	struct http_txn *txn = (s ? s->txn : NULL);
 	struct chunk chunk;
 	char *uri;
 	char *spc;
@@ -1411,7 +1411,7 @@ int build_logline(struct stream *s, char *dst, size_t maxsize, struct list *list
 	/* FIXME: let's limit ourselves to frontend logging for now. */
 
 	t_request = -1;
-	if (tv_isge(&s->logs.tv_request, &s->logs.tv_accept))
+	if (s && tv_isge(&s->logs.tv_request, &s->logs.tv_accept))
 		t_request = tv_ms_elapsed(&s->logs.tv_accept, &s->logs.tv_request);
 
 	tmplog = dst;
@@ -1425,6 +1425,21 @@ int build_logline(struct stream *s, char *dst, size_t maxsize, struct list *list
 		const char *src = NULL;
 		struct sample *key;
 		const struct chunk empty = { NULL, 0, 0 };
+
+		/* in v1.8 this isn't safe to have no fe/be/sess/stream so whitelist */
+		if (!s) {
+			switch (tmp->type) {
+				case LOG_FMT_SEPARATOR:
+				case LOG_FMT_TEXT:
+				case LOG_FMT_PID:
+				case LOG_FMT_HOSTNAME:
+				case LOG_FMT_ACTCONN:
+					break;
+				default:
+					/* skip over formatting */
+					continue;
+			}
+		}
 
 		switch (tmp->type) {
 			case LOG_FMT_SEPARATOR:
