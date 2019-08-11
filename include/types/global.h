@@ -188,6 +188,8 @@ struct global {
 		unsigned long thread[MAX_THREADS];  /* list of CPU masks for the 32/64 first threads of the 1st process */
 	} cpu_map;
 #endif
+	struct list proctitle_format;
+	struct task *proctitle_task;
 };
 
 /* options for mworker_proc */

@@ -1328,6 +1328,43 @@ static int compute_ideal_maxconn()
 	return MAX(maxconn, DEFAULT_MAXCONN);
 }
 
+/* temporary location for setproctitle update loop */
+#define PROCTITLE_UPDATE_INTERVAL_MS 1000
+
+static struct task *update_proctitle(struct task *t, void *context, unsigned short state)
+{
+	char proctitle[1024];
+	int size;
+
+	size = sess_build_logline(NULL, NULL, proctitle, sizeof(proctitle), &global.proctitle_format);
+
+	setproctitle("%s", proctitle);
+
+	t->expire = tick_add(now_ms, MS_TO_TICKS(PROCTITLE_UPDATE_INTERVAL_MS));
+	return t;
+}
+
+static int start_proctitle_task()
+{
+	struct task *t;
+
+	/* task for the proctitle update */
+	if ((t = task_new(MAX_THREADS_MASK)) == NULL) {
+		ha_alert("Starting proctitle update loop: out of memory.\n");
+		return 0;
+	}
+
+	global.proctitle_task = t;
+	t->process = update_proctitle;
+	t->context = NULL;
+
+	/* check this every ms */
+	t->expire = tick_add(now_ms, MS_TO_TICKS(PROCTITLE_UPDATE_INTERVAL_MS));
+	task_queue(t);
+
+	return 1;
+}
+
 /*
  * This function initializes all the necessary variables. It only returns
  * if everything is OK. If something fails, it exits.
@@ -1346,6 +1383,9 @@ static void init(int argc, char **argv)
 	struct post_check_fct *pcf;
 	int ideal_maxconn;
 
+	LIST_INIT(&global.proctitle_format);
+	global.proctitle_task = NULL;
+	
 	global.mode = MODE_STARTING;
 	next_argv = copy_argv(argc, argv);
 
@@ -1819,6 +1859,10 @@ static void init(int argc, char **argv)
 	global_listener_queue_task->context = NULL; /* not even a context! */
 	global_listener_queue_task->process = manage_global_listener_queue;
 
+	/* start up a task to update the proctitle, if needed */
+	if (!LIST_ISEMPTY(&global.proctitle_format))
+		start_proctitle_task();
+
 	/* now we know the buffer size, we can initialize the channels and buffers */
 	init_buffer();
 
@@ -2189,6 +2233,11 @@ void deinit(void)
 	struct build_opts_str *bol, *bolb;
 	struct post_deinit_fct *pdf;
 	int i;
+
+	if (global.proctitle_task) {
+		task_destroy(global.proctitle_task);
+		global.proctitle_task = NULL;
+	}
 
 	deinit_signals();
 	while (p) {
