@@ -114,6 +114,7 @@ enum {
 	LOG_FMT_UNIQUEID,
 	LOG_FMT_SSL_CIPHER,
 	LOG_FMT_SSL_VERSION,
+	LOG_FMT_HAPROXY_VERSION,
 };
 
 /* enum for parse_logformat_string */
