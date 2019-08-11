@@ -29,6 +29,7 @@
 #include <common/initcall.h>
 #include <common/standard.h>
 #include <common/time.h>
+#include <common/version.h>
 
 #include <types/cli.h>
 #include <types/global.h>
@@ -163,6 +164,7 @@ static const struct logformat_type logformat_keywords[] = {
 	{ "fi", LOG_FMT_FRONTENDIP, PR_MODE_TCP, LW_FRTIP | LW_XPRT, NULL }, /* frontend ip */
 	{ "fp", LOG_FMT_FRONTENDPORT, PR_MODE_TCP, LW_FRTIP | LW_XPRT, NULL }, /* frontend port */
 	{ "ft", LOG_FMT_FRONTEND_XPRT, PR_MODE_TCP, LW_INIT, NULL },  /* frontend with transport mode */
+	{ "hav", LOG_FMT_HAPROXY_VERSION, PR_MODE_TCP, LW_INIT, NULL }, /* HAProxy running version */
 	{ "hr", LOG_FMT_HDRREQUEST, PR_MODE_TCP, LW_REQHDR, NULL }, /* header request */
 	{ "hrl", LOG_FMT_HDRREQUESTLIST, PR_MODE_TCP, LW_REQHDR, NULL }, /* header request list */
 	{ "hs", LOG_FMT_HDRRESPONS, PR_MODE_TCP, LW_RSPHDR, NULL },  /* header response */
@@ -2897,6 +2899,15 @@ int sess_build_logline(struct session *sess, struct stream *s, char *dst, size_t
 				ret = NULL;
 				src = s ? s->unique_id : NULL;
 				ret = lf_text(tmplog, src, maxsize - (tmplog - dst), tmp);
+				if (ret == NULL)
+					goto out;
+				tmplog = ret;
+				last_isspace = 0;
+				break;
+			
+			case LOG_FMT_HAPROXY_VERSION: // %hav
+				ret = NULL;
+				ret = lf_text(tmplog, HAPROXY_VERSION, maxsize - (tmplog - dst), tmp);
 				if (ret == NULL)
 					goto out;
 				tmplog = ret;
