@@ -29,6 +29,7 @@
 #include <common/initcall.h>
 #include <common/standard.h>
 #include <common/time.h>
+#include <common/version.h>
 
 #include <types/cli.h>
 #include <types/global.h>
@@ -163,6 +164,7 @@ static const struct logformat_type logformat_keywords[] = {
 	{ "fi", LOG_FMT_FRONTENDIP, PR_MODE_TCP, LW_FRTIP | LW_XPRT, NULL }, /* frontend ip */
 	{ "fp", LOG_FMT_FRONTENDPORT, PR_MODE_TCP, LW_FRTIP | LW_XPRT, NULL }, /* frontend port */
 	{ "ft", LOG_FMT_FRONTEND_XPRT, PR_MODE_TCP, LW_INIT, NULL },  /* frontend with transport mode */
+	{ "hav", LOG_FMT_HAPROXY_VERSION, PR_MODE_TCP, LW_INIT, NULL }, /* HAProxy running version */
 	{ "hr", LOG_FMT_HDRREQUEST, PR_MODE_TCP, LW_REQHDR, NULL }, /* header request */
 	{ "hrl", LOG_FMT_HDRREQUESTLIST, PR_MODE_TCP, LW_REQHDR, NULL }, /* header request list */
 	{ "hs", LOG_FMT_HDRRESPONS, PR_MODE_TCP, LW_RSPHDR, NULL },  /* header response */
@@ -1907,7 +1909,7 @@ void deinit_log_buffers()
  */
 int sess_build_logline(struct session *sess, struct stream *s, char *dst, size_t maxsize, struct list *list_format)
 {
-	struct proxy *fe = sess->fe;
+	struct proxy *fe = (sess ? sess->fe : NULL);
 	struct proxy *be;
 	struct http_txn *txn;
 	const struct strm_logs *logs;
@@ -1952,18 +1954,33 @@ int sess_build_logline(struct session *sess, struct stream *s, char *dst, size_t
 		txn = NULL;
 		be_conn = NULL;
 		s_flags = SF_ERR_PRXCOND | SF_FINST_R;
-		uniq_id = _HA_ATOMIC_XADD(&global.req_count, 1);
+		if (unlikely(!sess)) {
+			/* don't bother setting per-request things if we're not in
+			 * session scope (e.g. global formats)
+			 */
+			uniq_id = 0;
+		} else {
+			uniq_id = _HA_ATOMIC_XADD(&global.req_count, 1);
+		}
 
 		/* prepare a valid log structure */
-		tmp_strm_log.tv_accept = sess->tv_accept;
-		tmp_strm_log.accept_date = sess->accept_date;
-		tmp_strm_log.t_handshake = sess->t_handshake;
-		tmp_strm_log.t_idle = tv_ms_elapsed(&sess->tv_accept, &now) - sess->t_handshake;
+		if (likely(sess)) {
+			tmp_strm_log.tv_accept = sess->tv_accept;
+			tmp_strm_log.accept_date = sess->accept_date;
+			tmp_strm_log.t_handshake = sess->t_handshake;
+			tmp_strm_log.t_idle = tv_ms_elapsed(&sess->tv_accept, &now) - sess->t_handshake;
+			tmp_strm_log.t_close = tv_ms_elapsed(&sess->tv_accept, &now);
+		} else {
+			tv_zero(&tmp_strm_log.tv_accept);
+			tv_zero(&tmp_strm_log.accept_date);
+			tmp_strm_log.t_handshake = 0;
+			tmp_strm_log.t_idle = 0;
+			tmp_strm_log.t_close = 0;
+		}
 		tv_zero(&tmp_strm_log.tv_request);
 		tmp_strm_log.t_queue = -1;
 		tmp_strm_log.t_connect = -1;
 		tmp_strm_log.t_data = -1;
-		tmp_strm_log.t_close = tv_ms_elapsed(&sess->tv_accept, &now);
 		tmp_strm_log.bytes_in = 0;
 		tmp_strm_log.bytes_out = 0;
 		tmp_strm_log.prx_queue_pos = 0;
@@ -2882,6 +2899,15 @@ int sess_build_logline(struct session *sess, struct stream *s, char *dst, size_t
 				ret = NULL;
 				src = s ? s->unique_id : NULL;
 				ret = lf_text(tmplog, src, maxsize - (tmplog - dst), tmp);
+				if (ret == NULL)
+					goto out;
+				tmplog = ret;
+				last_isspace = 0;
+				break;
+			
+			case LOG_FMT_HAPROXY_VERSION: // %hav
+				ret = NULL;
+				ret = lf_text(tmplog, HAPROXY_VERSION, maxsize - (tmplog - dst), tmp);
 				if (ret == NULL)
 					goto out;
 				tmplog = ret;
